@@ -40,11 +40,11 @@ ui <- dashboardPage(
                                             textInput("cntry", "Please enter the country: ", value=""), br(),
 
                                             textAreaInput("res_files", "Please enter the URLs for the results files (separated by `, `): " ,
-                                                          "https://surveda-africa.org/link/9a635bdc77eb99848cfefc317dddadd9",
+                                                          "",
                                                           resize = "vertical"), br(),
 
                                             textAreaInput("int_files", "Please enter the URLs for the interaction files (separated by `, `): " ,
-                                                          "https://surveda-africa.org/link/3d3fb3a3b31d810e497b82192ab70592",
+                                                          "",
                                                           resize = "vertical"), br())#,
                                    # menuItem("Outputs", icon=icon("file"), startExpanded = TRUE,
                                    #          actionButton("view", "Click to view report"),
