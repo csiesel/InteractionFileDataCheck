@@ -544,7 +544,7 @@ server <- function(input, output, session){
                   by=c("respondent_id", "dispo", "mno"), all=TRUE) %>%
             mutate(contact_attempts = length(which(grepl("action_data", names(.))))-rowSums(is.na(.[,which(grepl("action_data", names(.)))])))
 
-        numcont2 <- num_cont %>% group_by(respondent_id, mno) %>% mutate(contact_attempts=sum(contact_attempts, na.rm=TRUE)) %>% suppressWarnings(summarise_all(funs(max(as.character(.), na.rm=TRUE))))
+        numcont2 <- num_cont %>% group_by(respondent_id, mno) %>% mutate(contact_attempts=sum(contact_attempts, na.rm=TRUE)) %>% suppressWarnings(dplyr::summarise_all(funs(max(as.character(.), na.rm=TRUE))))
 
         numcont2 <- numcont2 %>% select(-matches("5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20|21"))
 
@@ -556,9 +556,9 @@ server <- function(input, output, session){
         resp_rates <- numcont2() %>%
             ungroup() %>%
             select(matches("action")) %>%
-            # summarise_at(c("attempt_1_IVR_action_data"), list(length=length(which(.=="Answer"))))
-            # summarise(groups=names(.)[which(grepl("action", names(.)))], n())
-            summarise_all(.funs = ~length(which(.=="Answer"))/(length(which(!is.na(.))))*100)
+            # dplyr::summarise_at(c("attempt_1_IVR_action_data"), list(length=length(which(.=="Answer"))))
+            # dplyr::summarise(groups=names(.)[which(grepl("action", names(.)))], n())
+            dplyr::summarise_all(.funs = ~length(which(.=="Answer"))/(length(which(!is.na(.))))*100)
 
         names(resp_rates) <- str_replace(names(resp_rates),"_action_data","")
 
@@ -579,7 +579,7 @@ server <- function(input, output, session){
     cont_lag_ridges <- reactive({
         text_df <- numcont2() %>% ungroup() %>% select(respondent_id, (matches("lag") & !matches("date"))) %>%
             pivot_longer(cols = matches("lag")) %>% filter(!is.na(value)) %>%
-            group_by(name) %>% summarise(value = median(value, na.rm=T))
+            group_by(name) %>% dplyr::summarise(value = median(value, na.rm=T))
 
 
         cont_lag_ridges <- ggplot(numcont2() %>% ungroup() %>% select(respondent_id, (matches("lag") & !matches("date"))) %>% pivot_longer(cols = matches("lag")) %>% filter(!is.na(value)),
@@ -612,7 +612,7 @@ server <- function(input, output, session){
             ungroup() %>%
             select(contains("attempt")) %>%
             group_by_all() %>%
-            summarise(n=n()) %>%
+            dplyr::summarise(n=n()) %>%
             ungroup() %>%
             mutate(row_num=paste0("Option ", row_number())) %>%
             pivot_longer(!c(row_num, n), names_to="attempt") %>%
@@ -638,7 +638,7 @@ server <- function(input, output, session){
             ungroup() %>%
             select(contains("attempt"), dispo) %>%
             group_by_all() %>%
-            summarise(n=n()) %>%
+            dplyr::summarise(n=n()) %>%
             ungroup() %>%
             mutate(row_num=paste0("Option ", row_number())) %>%
             pivot_longer(!c(row_num, n, dispo), names_to="attempt") %>%
@@ -775,7 +775,7 @@ server <- function(input, output, session){
     })
 
     errors_by_prompt <- reactive({
-        ggplot(errors_df2() %>% group_by(prompt) %>% summarise(n_error=length(which(errors=="Error")),
+        ggplot(errors_df2() %>% group_by(prompt) %>% dplyr::summarise(n_error=length(which(errors=="Error")),
                                                                n_response = n(),
                                                                perc_error = n_error/n_response*100), aes(x=prompt, fill=perc_error, y="")) +
             geom_tile(color="white") +
@@ -800,7 +800,7 @@ server <- function(input, output, session){
         error_responses <- errors_df2() %>%
             filter(errors=="Error") %>%
             group_by(prompt, response) %>%
-            summarise(n=n()) %>%
+            dplyr::summarise(n=n()) %>%
             group_by(prompt) #%>%
             #slice_max(order_by=n, n=5, with_ties = FALSE)
         return(error_responses)
@@ -825,7 +825,7 @@ server <- function(input, output, session){
         ggplot(breakoff_prompt() %>%
                    mutate(action_data = str_replace(action_data, "(new MOH question)", "")) %>%
                    group_by(action_data) %>%
-                   summarise(n=n()) %>%
+                   dplyr::summarise(n=n()) %>%
                    arrange(-n),
                aes(x=reorder(action_data, -n), y=log(n)+.75, label=n)) +
             geom_col() +
