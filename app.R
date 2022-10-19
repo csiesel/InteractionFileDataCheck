@@ -1,25 +1,49 @@
+#
+# library(shiny)
+# library(shinydashboard)
+# library(shinydashboardPlus)
+# library(dashboardthemes)
+# library(stringr)
+# library(data.table)
+# library(janitor)
+# library(tidyverse)
+# library(flexdashboard)
+# library(shiny)
+# library(lubridate)
+# library(DT)
+# library(wesanderson)
+# library(MetBrewer)
+# library(knitr)
+# library(shades)
+# library(ggrepel)
+# library(scales)
+# library(ggridges)
+# library(viridis)
+# library(tidytext)
 
-library(shiny)
-library(shinydashboard)
-library(shinydashboardPlus)
-library(dashboardthemes)
-library(stringr)
-library(data.table)
-library(janitor)
-library(tidyverse)
-library(flexdashboard)
-library(shiny)
-library(lubridate)
-library(DT)
-library(wesanderson)
-library(MetBrewer)
-library(knitr)
-library(shades)
-library(ggrepel)
-library(scales)
-library(ggridges)
-library(viridis)
-library(tidytext)
+pacman::p_load("shiny",
+               "shinydashboard",
+               "shinydashboardPlus",
+               "dashboardthemes",
+               "stringr",
+               "data.table",
+               "janitor",
+               "tidyverse",
+               "flexdashboard",
+               "shiny",
+               "lubridate",
+               "DT",
+               "wesanderson",
+               "MetBrewer",
+               "knitr",
+               "shades",
+               "ggrepel",
+               "scales",
+               "ggridges",
+               "viridis",
+               "tidytext")
+
+
 `%!in%` = Negate(`%in%`)
 options(timeout=30000)
 options(shiny.maxRequestSize=500*1024^2)
