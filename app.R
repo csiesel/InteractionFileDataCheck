@@ -699,9 +699,9 @@ server <- function(input, output, session){
             mutate(prompt = tolower(prompt)) %>%
             mutate(prompt = ifelse(prompt %in% c("days eat fruits", "days of fruit", "number of days eat fruit"), "days eat fruit", prompt)) %>%
             mutate(prompt = ifelse(prompt %in% c("number of days eat veg", "days of vegetables"), "days eat vegetables", prompt)) %>%
-            mutate(prompt = ifelse(prompt %in% c("servings of veg per day"), "servings of vegetables per day", prompt)) %>%
+            mutate(prompt = ifelse(prompt %in% c("servings of veg per day", "servings of vegetables"), "servings of vegetables per day", prompt)) %>%
             mutate(prompt = ifelse(prompt %in% c("share phone numbers"), "share phone number", prompt)) %>%
-            mutate(prompt = ifelse(prompt %in% c("servings of fruits per day"), "servings of fruit per day", prompt)) %>%
+            mutate(prompt = ifelse(prompt %in% c("servings of fruits per day", "servings of fruit"), "servings of fruit per day", prompt)) %>%
             mutate(prompt = ifelse(prompt %in% c("salt added while food is prepared at home", "salt in food and home"), "salt in food at home", prompt)) %>%
             mutate(prompt = ifelse(prompt %in% c("processed foods", "processed food"), "eat processed foods", prompt)) %>%
             mutate(prompt = ifelse(prompt %in% c("drugs: hypertension"), "drugs: high blood pressure", prompt)) %>%
