@@ -438,7 +438,7 @@ server <- function(input, output, session){
         mutate(contact_attempt = paste0("attempt_", row_number()),
                contact_mode = paste0("attempt_", row_number(), "_", mode),
                cont_lag = ifelse(respondent_id == lag(respondent_id, 1), difftime(dt, lag(dt, 1), units = "hours"), NA)) %>%
-        pivot_wider(id_cols=c("respondent_id", "mode"), names_from=c("contact_mode"), values_from=c("action_data", "cont_lag"), names_glue="{contact_mode}_{.value}") %>%
+        pivot_wider(id_cols=c("respondent_id", "mode"), names_from=c("contact_mode"), values_from=c("action_data", "cont_lag", "disposition"), names_glue="{contact_mode}_{.value}") %>%
         merge(., temp_res(), by="respondent_id") %>%
         mutate(dispo = case_when(disposition=="Completed" ~ "Completed",
                                  disposition=="Interim partial" ~ "Partial",
@@ -465,7 +465,7 @@ server <- function(input, output, session){
         mutate(contact_attempt = paste0("attempt_", row_number()),
                contact_mode = paste0("attempt_", row_number(), "_", mode),
                cont_lag = ifelse(respondent_id == lag(respondent_id, 1), difftime(dt, lag(dt, 1), units = "hours"), NA)) %>%
-        pivot_wider(id_cols=c("respondent_id", "mode"), names_from=c("contact_mode"), values_from=c("action_data", "cont_lag"), names_glue="{contact_mode}_{.value}") %>%
+        pivot_wider(id_cols=c("respondent_id", "mode"), names_from=c("contact_mode"), values_from=c("action_data", "cont_lag", "disposition"), names_glue="{contact_mode}_{.value}") %>%
         merge(., temp_res(), by="respondent_id") %>%
         mutate(dispo = case_when(disposition=="Completed" ~ "Completed",
                                  disposition=="Interim partial" ~ "Partial",
@@ -493,7 +493,7 @@ server <- function(input, output, session){
         mutate(contact_attempt = paste0("attempt_", row_number()),
                contact_mode = paste0("attempt_", row_number(), "_", mode),
                cont_lag = ifelse(respondent_id == lag(respondent_id, 1), difftime(dt, lag(dt, 1), units = "hours"), NA)) %>%
-        pivot_wider(id_cols=c("respondent_id", "mode"), names_from=c("contact_mode"), values_from=c("action_data", "cont_lag"), names_glue="{contact_mode}_{.value}") %>%
+        pivot_wider(id_cols=c("respondent_id", "mode"), names_from=c("contact_mode"), values_from=c("action_data", "cont_lag", "disposition"), names_glue="{contact_mode}_{.value}") %>%
         merge(., temp_res(), by="respondent_id") %>%
         mutate(dispo = case_when(disposition=="Completed" ~ "Completed",
                                  disposition=="Interim partial" ~ "Partial",
