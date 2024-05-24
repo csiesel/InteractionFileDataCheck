@@ -7,7 +7,7 @@ pacman::p_load("shiny","shinydashboard","shiny","shinydashboard",
                "ggridges","viridis","tidytext","tidyr",
                "dplyr","shinyTime","deeptime","gt",
                "gtExtras","svglite","googlesheets4", "hms",
-               "kableExtra")
+               "kableExtra", "anytime")
 `%!in%` = Negate(`%in%`)
 options(timeout=300000)
 options(shiny.maxRequestSize=500*1024^2)
@@ -45,7 +45,28 @@ ui <- dashboardPage(
                                                    '.csv'),
                                           buttonLabel = "Browse",
                                           placeholder = "No file selected",
-                                          width = "75%"), br())
+                                          width = "75%"), br(),
+
+                                        dateInput(
+                                          inputId = "min_date",
+                                          label = "Select the earliest date for data",
+                                          value = NULL,
+                                          min = NULL,
+                                          max = NULL,
+                                          width="75%"), br(),
+
+                                        dateInput(
+                                          inputId = "max_date",
+                                          label = "Select the latest date for data",
+                                          value = NULL,
+                                          min = NULL,
+                                          max = NULL,
+                                          width="75%"), br()
+
+
+
+
+                                        )
                              )),
   body = dashboardBody(customTheme,
                        tabsetPanel(type="tabs",
@@ -125,7 +146,30 @@ server <- function(input, output, session){
   options(shiny.maxRequestSize=500*1024^2)
   session$allowReconnect(TRUE)
 
+  # Updating min/max date
+  observeEvent(input$int_files,{
+  req(input$res_files, input$int_files)
 
+    min_day <- min(int_df()$date_format, na.rm=T)
+    max_day <- max(int_df()$date_format, na.rm=T)
+
+    updateDateInput(session, "max_date",
+                    max = anydate(max_day)+1)
+    updateDateInput(session, "max_date",
+                    min = min_day,
+                    value = max_day)
+
+    updateDateInput(session, "min_date",
+                    value = min_day,
+                    min = min_day,
+                    max = max_day)
+
+
+  })
+
+
+
+reactive({print(input$max_date)})
 
   #### Load Res Files ####
   res_df <- reactive({
@@ -144,6 +188,9 @@ server <- function(input, output, session){
     }
     res_df <- do.call(plyr::rbind.fill, res_df)
     res_df <- as.data.frame(res_df) %>% clean_names()
+
+    res_df$date_format <- format(strptime(res_df$date, "%b %d, %Y %H:%M"), "%Y %m %d")
+
     return(res_df)
     #}
   })
@@ -171,6 +218,10 @@ server <- function(input, output, session){
     int_df <- as.data.frame(int_df) %>% clean_names()
     # int_df <- do.call(rbindlist, int_df)
     int_df <- merge(int_df, res_df() %>% dplyr::select("respondent_id", "mno"), by="respondent_id")
+
+    int_df$date_format <- format(strptime(int_df$timestamp, "%Y-%m-%d %H:%M:%S"), "%Y %m %d")
+
+
     return(int_df)
   })
 
@@ -183,6 +234,8 @@ server <- function(input, output, session){
     req(res_df())
 
     temp_res <- res_df() %>%
+      filter(anydate(date_format) >= anydate(input$min_date) & anydate(date_format) <= anydate(input$max_date)) %>%
+      # filter(between(date_format, as.Date(input$min_date), as.Date(input$max_date))) %>%
       mutate(age = as.numeric(age)) %>%
       mutate(age_bin = case_when(age < 18 ~ "<18",
                                  age >=18 & age <30 ~ "18-29",
@@ -207,6 +260,7 @@ server <- function(input, output, session){
                                disposition=="Unresponsive" ~ "Unknown Eligiblity - Non-Interview",
                                TRUE ~ "UNKNOWN"))
 
+
     return(temp_res)
   })
 
@@ -215,6 +269,8 @@ server <- function(input, output, session){
     req(int_df())
 
     temp_int <- int_df() %>%
+      filter(anydate(date_format) >= anydate(input$min_date) & anydate(date_format) <= anydate(input$max_date)) %>%
+      # filter(between(date_format, as.Date(input$min_date), as.Date(input$max_date))) %>%
       mutate(dispo = case_when(disposition %in% c("Completed", "Interim partial", "Partial") ~ "Complete",
                                TRUE ~ disposition)) %>%
       mutate(date2 = format(as.POSIXct(timestamp), format="%m %d %Y"))
