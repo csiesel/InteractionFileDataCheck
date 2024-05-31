@@ -8,20 +8,24 @@ calculate_call_time <- function(start_date, delay_hours, start_window, end_windo
   }, error = function(e) {
     stop("Invalid start date format. Ensure it's in 'YYYY-MM-DD HH:MM:SS' format.")
   })
-  if (is.na(start_datetime)) {
-    stop("Invalid start date format. Ensure it's in 'YYYY-MM-DD HH:MM:SS' format.")
+  if (shiny::isTruthy(start_datetime)==FALSE) {
+    target_datetime=NA
+    return(target_datetime)
   }
 
   target_datetime <- start_datetime + hours(delay_hours)
 
   is_in_window <- function(dt) {
     hour <- hour(dt)
-    return((hour >= start_window) | (hour < end_window))
+    return((hour >= start_window) & (hour < end_window))
   }
 
-  while (is_in_window(target_datetime)) {
+  if (is_in_window(target_datetime)==FALSE) {
     # Move the datetime to the end of the restricted time window
-    target_datetime <- ceiling_date(target_datetime, unit = "day") + hours(end_window)
+    target_datetime <- ceiling_date(target_datetime, unit = "day") + hours(start_window)
+  }
+  if (is_in_window(target_datetime)){
+    target_datetime
   }
 
   return(target_datetime)
