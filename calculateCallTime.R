@@ -29,11 +29,11 @@ calculate_call_time <- function(start_date, delay_hours, start_window, end_windo
 
 # Example usage
 
-start_date <- '2024-05-27 19:15:00'
-start_window <- 20
-end_window <- 8
-delay_hours <- 26
-ideal_call_time <- calculate_call_time(start_date, delay_hours, start_window, end_window)
+#start_date <- '2024-05-27 19:15:00'
+#start_window <- 20
+#end_window <- 8
+#delay_hours <- 26
+#ideal_call_time <- calculate_call_time(start_date, delay_hours, start_window, end_window)
 
 # Print the result
-print(ideal_call_time)
+#print(ideal_call_time)
