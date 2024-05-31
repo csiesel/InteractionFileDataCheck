@@ -7,13 +7,17 @@ pacman::p_load("shiny","shinydashboard","shiny","shinydashboard",
                "ggridges","viridis","tidytext","tidyr",
                "dplyr","shinyTime","deeptime","gt",
                "gtExtras","svglite","googlesheets4", "hms",
-               "kableExtra", "anytime")
+               "kableExtra", "anytime", "shinyDatetimePickers")
 `%!in%` = Negate(`%in%`)
 options(timeout=300000)
 options(shiny.maxRequestSize=500*1024^2)
 
 source("themes.R")
 `%!in%` <- Negate(`%in%`)
+
+# Sourcing the new function from github
+source("https://raw.githubusercontent.com/csiesel/InteractionFileDataCheck/main/calculateCallTime.R")
+
 
 
 ui <- dashboardPage(
@@ -61,7 +65,21 @@ ui <- dashboardPage(
                                           value = NULL,
                                           min = NULL,
                                           max = NULL,
-                                          width="75%"), br()
+                                          width="75%"), br(),
+
+                                        # Inputs for new contact lag calculations
+                                        # datetimeMaterialPickerInput(inputId = "start_date",
+                                        #                             label = "Please select the start date/time: ",
+                                        #                             disableFuture = TRUE), br(),
+                                        numericInput(inputId = "delay_hours",
+                                                     label = "Input the contact lag in hours: ",value = 26,min = 0,max=100,step = 1), br(),
+                                        numericInput(inputId = "start_window",
+                                                     label = "Input the start of the contact window: ",value = 8,min = 0,max=24,step = 1), br(),
+                                        numericInput(inputId = "end_window",
+                                                     label = "Input the end of the contact window: ",value = 20,min = 0,max=24,step = 1), br()
+
+
+
 
 
 
@@ -112,6 +130,20 @@ ui <- dashboardPage(
                                             h4("Engagement is calculated as the number of respondents who answered a contact attempt (answered IVR call, responded to SMS, responded to Mobile Web)
                                  divided by the total number of respondents contacted in that attempt.", align="center"),
                                             plotOutput("cont_resp_rates")),
+
+                                   # New contact lag function tab
+                                   tabPanel("NEW Contact Attempts and Lag",
+                                            h3("The plot below shows the lag between contact attempts across mode(s)",
+                                               align="center"),
+                                            h4("The median lag (vertical line) should be close or equal to the settings set in Surveda.",
+                                               align="center"),
+                                            plotOutput("cont_lag_ridges_v2"),
+                                            br(),
+                                            downloadButton("numcont2_d_v2", "Download csv"),
+                                            DT::DTOutput("numcont2_v2"),
+                                            br()
+                                            ),
+
 
                                    tabPanel("Errors",
                                             h3("The plot below shows the percent and number of responses that resulted in errors by question",
@@ -630,6 +662,254 @@ reactive({print(input$max_date)})
 
   })
 
+
+  numcont2_v2 <- reactive({
+    contacts <- temp_int() %>%
+      mutate(dates = substr(timestamp, 1, 10),
+             dt = as.POSIXct(timestamp)) %>%
+      as.data.frame()
+
+    #IVR
+    cont_answer_IVR <- contacts %>%
+      filter(mode=="IVR") %>%
+      filter(action_type=="Contact attempt" & action_data!='User hangup') %>%
+      filter(action_data!="Timeout") %>%
+      filter(action_data!="Enqueueing call") %>%
+      arrange(-id) %>%
+      distinct(respondent_id, action_data, dates, .keep_all = TRUE) %>%
+      as.data.frame()
+
+    if(nrow(cont_answer_IVR==0)){
+      cont_answer_IVR <- cont_answer_IVR
+    }
+    if(nrow(cont_answer_IVR)>0){
+      cont_answer_IVR <- cont_answer_IVR %>%
+        rowwise() %>%
+        mutate(ideal_contact = calculate_call_time(start_date=dt, delay_hours=26, start_window=8, end_window=20))
+
+    }
+
+
+    #SMS
+    cont_answer_SMS <- contacts %>%
+      filter(mode=="SMS") %>%
+      group_by(respondent_id, mode, dates) %>%
+      mutate(bad = ifelse(action_type[which.min(id)]=="Response", "bad", "good")) %>%
+      ungroup() %>%
+      filter(action_data!="Response") %>%
+      filter(action_type!="Disposition changed") %>%
+      mutate(row=row_number()) %>%
+      group_by(respondent_id, mode, dates) %>%
+      mutate(resp = case_when(any(action_type=="Response") ~ "Answer",
+                              TRUE ~ "no-answer")) %>%
+      slice(which.max(row)) %>%
+      arrange(-id) %>%
+      distinct(respondent_id, action_data, dates, .keep_all = TRUE) %>%
+      mutate(action_data=resp) %>%
+      filter(bad !="bad") %>%
+      dplyr::select(-bad, -resp) %>%
+      as.data.frame()
+
+    if(nrow(cont_answer_SMS==0)){
+      cont_answer_SMS <- cont_answer_SMS
+    }
+    if(nrow(cont_answer_SMS)>0){
+      cont_answer_SMS <- cont_answer_SMS %>%
+        rowwise() %>%
+        mutate(ideal_contact = calculate_call_time(start_date=dt, delay_hours=26, start_window=8, end_window=20))
+
+    }
+
+    #Mobile Web
+    cont_answer_MW <- contacts %>%
+      filter(mode=="Mobile Web", action_type != "Disposition changed", grepl("Contact|Lang", action_data)) %>%
+      mutate(row=row_number()) %>%
+      group_by(respondent_id, mode, dates) %>%
+      mutate(resp = case_when(any(action_type=="Response") ~ "Answer",
+                              TRUE ~ "no-answer")) %>%
+      slice(which.max(row)) %>%
+      arrange(-id) %>%
+      distinct(respondent_id, action_data, dates, .keep_all = TRUE) %>%
+      mutate(action_data=resp) %>%
+      dplyr::select(-resp) %>%
+      as.data.frame()
+
+    if(nrow(cont_answer_MW==0)){
+      cont_answer_MW <- cont_answer_MW
+    }
+    if(nrow(cont_answer_MW)>0){
+      cont_answer_MW <- cont_answer_MW %>%
+        rowwise() %>%
+        mutate(ideal_contact = calculate_call_time(start_date=dt, delay_hours=26, start_window=8, end_window=20))
+
+    }
+
+    a_data <- unique(c(cont_answer_IVR$action_data, cont_answer_MW$action_data, cont_answer_SMS$action_data))
+    # TOOK THIS OUT FROM BELOW: , "No user responding (ISDN:18)"
+    valid_cont <- a_data[a_data %!in% c("failed","Temporary failure (ISDN:41)","Network out of order (ISDN:38)",
+                                        "Bearer capability not authorized (ISDN:57)","Protocol error, unspecified (ISDN:111)",
+                                        "No route to destination (ISDN:3)","Bearer capability not available (ISDN:58)","Bearer capability not implemented (ISDN:65)",
+                                        "Incompatible destination (ISDN:88)","Destination out of order (ISDN:27)","Number changed (ISDN:22)",
+                                        "Switching equipment congestion (ISDN:42)","Interworking, unspecified (ISDN:127)","Circuit/channel congestion (ISDN:34)",
+                                        "Invalid number format (ISDN:28)","Unallocated (unassigned) number (ISDN:1)","function_clause",
+                                        "Facility not subscribed (ISDN:50)","Requested channel not available (ISDN:44)","Recover on timer expiry (ISDN:102)",
+                                        "Channel not implemented (ISDN:66)","Facility rejected (ISDN:29)","timeout (undefined)",
+                                        "Mandatory information element is missing (ISDN:96)", "Invalid message unspecified (ISDN:95)",
+                                        "Call Rejected (ISDN:21)", "failed: Call Rejected (ISDN:21)")]
+    # valid_cont <- a_data
+
+    # Add this in the mutate for date lag:
+    # date_lag = ifelse(respondent_id == lag(respondent_id, 1), paste0(lag(dates, 1), "  -  ", dates), NA)
+
+    if(nrow(cont_answer_IVR>0)){
+      ivr <-cont_answer_IVR %>% filter(mode=="IVR") %>%
+        filter(action_data %in% valid_cont) %>%
+        distinct(respondent_id, dates, .keep_all = TRUE) %>%
+        arrange(id) %>%
+        group_by(respondent_id, mode) %>%
+        mutate(contact_attempt = paste0("attempt_", row_number()),
+               contact_mode = paste0("attempt_", row_number(), "_", mode),
+               cont_lag = ifelse(respondent_id == lag(respondent_id, 1), difftime(force_tz(dt, "UTC"), lag(force_tz(ideal_contact, "UTC"), 1), units = "hours"), NA)) %>%
+        pivot_wider(id_cols=c("respondent_id", "mode"), names_from=c("contact_mode"), values_from=c("action_data", "cont_lag", "disposition", "dt", "ideal_contact"), names_glue="{contact_mode}_{.value}") %>%
+        merge(., temp_res(), by="respondent_id") %>%
+        mutate(dispo = case_when(disposition=="Completed" ~ "Completed",
+                                 disposition=="Interim partial" ~ "Partial",
+                                 disposition=="Partial" ~ "Partial",
+                                 disposition=="Refused" ~ "Refused",
+                                 disposition=="Rejected" ~ "Not Eligible: Quota",
+                                 disposition=="Ineligible" ~ "Not Eligible: Age",
+                                 disposition=="Breakoff" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
+                                 disposition=="Breakoff" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Contacted" ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Failed" ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Started" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
+                                 disposition=="Started" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Unresponsive" ~ "Unknown Eligiblity - Non-Interview",
+                                 TRUE ~ "UNKNOWN"))
+    }
+
+
+    if(nrow(cont_answer_SMS>0)){
+      sms <- cont_answer_SMS %>% filter(mode=="SMS") %>%
+        distinct(respondent_id, dates, .keep_all = TRUE) %>%
+        arrange(id) %>%
+        group_by(respondent_id, mode) %>%
+        mutate(contact_attempt = paste0("attempt_", row_number()),
+               contact_mode = paste0("attempt_", row_number(), "_", mode),
+               cont_lag = ifelse(respondent_id == lag(respondent_id, 1), difftime(force_tz(dt, "UTC"), lag(force_tz(ideal_contact, "UTC"), 1), units = "hours"), NA)) %>%
+
+               # cont_lag = ifelse(respondent_id == lag(respondent_id, 1), difftime(dt, lag(dt, 1), units = "hours"), NA)) %>%
+        pivot_wider(id_cols=c("respondent_id", "mode"), names_from=c("contact_mode"), values_from=c("action_data", "cont_lag", "disposition", "dt", "ideal_contact"), names_glue="{contact_mode}_{.value}") %>%
+        merge(., temp_res(), by="respondent_id") %>%
+        mutate(dispo = case_when(disposition=="Completed" ~ "Completed",
+                                 disposition=="Interim partial" ~ "Partial",
+                                 disposition=="Partial" ~ "Partial",
+                                 disposition=="Refused" ~ "Refused",
+                                 disposition=="Rejected" ~ "Not Eligible: Quota",
+                                 disposition=="Ineligible" ~ "Not Eligible: Age",
+                                 disposition=="Breakoff" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
+                                 disposition=="Breakoff" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Contacted" ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Failed" ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Started" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
+                                 disposition=="Started" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Unresponsive" ~ "Unknown Eligiblity - Non-Interview",
+                                 TRUE ~ "UNKNOWN"))
+    }
+
+
+    if(nrow(cont_answer_MW)>0){
+      mw <- cont_answer_MW %>% filter(mode=="Mobile Web") %>%
+        as.data.frame() %>%
+        distinct(respondent_id, dates, .keep_all = TRUE) %>%
+        arrange(id) %>%
+        group_by(respondent_id, mode) %>%
+        mutate(contact_attempt = paste0("attempt_", row_number()),
+               contact_mode = paste0("attempt_", row_number(), "_", mode),
+               cont_lag = ifelse(respondent_id == lag(respondent_id, 1), difftime(force_tz(dt, "UTC"), lag(force_tz(ideal_contact, "UTC"), 1), units = "hours"), NA)) %>%
+        pivot_wider(id_cols=c("respondent_id", "mode"), names_from=c("contact_mode"), values_from=c("action_data", "cont_lag", "disposition", "dt", "ideal_contact"), names_glue="{contact_mode}_{.value}") %>%
+        merge(., temp_res(), by="respondent_id") %>%
+        mutate(dispo = case_when(disposition=="Completed" ~ "Completed",
+                                 disposition=="Interim partial" ~ "Partial",
+                                 disposition=="Partial" ~ "Partial",
+                                 disposition=="Refused" ~ "Refused",
+                                 disposition=="Rejected" ~ "Not Eligible: Quota",
+                                 disposition=="Ineligible" ~ "Not Eligible: Age",
+                                 disposition=="Breakoff" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
+                                 disposition=="Breakoff" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Contacted" ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Failed" ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Started" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
+                                 disposition=="Started" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Unresponsive" ~ "Unknown Eligiblity - Non-Interview",
+                                 TRUE ~ "UNKNOWN"))
+    }
+
+    modes = unique(temp_int()$mode)
+
+    if("SMS" %in% modes & "IVR" %in% modes){
+      num_cont <- ivr %>% select(respondent_id, mno, dispo, matches("attempt_")) %>%
+        merge(., sms %>% select(respondent_id, mno, dispo, matches("attempt_")),
+              by=c("respondent_id", "dispo", "mno"), all=TRUE)%>%
+        mutate(contact_attempts = length(which(grepl("action_data", names(.))))-
+                 ifelse(length(which(grepl("action_data", names(.))))==1,0,
+                        rowSums(is.na(.[,which(grepl("action_data", names(.)))]))))
+
+    }
+    if("SMS" %in% modes & "Mobile Web" %in% modes){
+      num_cont <- sms %>% select(respondent_id, mno, dispo, matches("attempt_")) %>%
+        merge(., mw %>% select(respondent_id, mno, dispo, matches("attempt_")),
+              by=c("respondent_id", "dispo", "mno"), all=TRUE)%>%
+        mutate(contact_attempts = length(which(grepl("action_data", names(.))))-
+                 ifelse(length(which(grepl("action_data", names(.))))==1,0,
+                        rowSums(is.na(.[,which(grepl("action_data", names(.)))]))))
+
+    }
+    if("IVR" %in% modes & "Mobile Web" %in% modes){
+      num_cont <- ivr %>% select(respondent_id, mno, dispo, matches("attempt_")) %>%
+        merge(., mw %>% select(respondent_id, mno, dispo, matches("attempt_")),
+              by=c("respondent_id", "dispo", "mno"), all=TRUE)%>%
+        mutate(contact_attempts = length(which(grepl("action_data", names(.))))-
+                 ifelse(length(which(grepl("action_data", names(.))))==1,0,
+                        rowSums(is.na(.[,which(grepl("action_data", names(.)))]))))
+
+    }
+    if("SMS" %in% modes & "IVR" %!in% modes & "Mobile Web" %!in% modes){
+      num_cont <- sms %>% select(respondent_id, mno, dispo, matches("attempt_"))%>%
+        mutate(contact_attempts = length(which(grepl("action_data", names(.))))-
+                 ifelse(length(which(grepl("action_data", names(.))))==1,0,
+                        rowSums(is.na(.[,which(grepl("action_data", names(.)))]))))
+
+    }
+    if("IVR" %in% modes & "SMS" %!in% modes & "Mobile Web" %!in% modes){
+      num_cont <- ivr %>% select(respondent_id, mno, dispo, matches("attempt_"))%>%
+        mutate(contact_attempts = length(which(grepl("action_data", names(.))))-
+                 ifelse(length(which(grepl("action_data", names(.))))==1,0,
+                        rowSums(is.na(.[,which(grepl("action_data", names(.)))]))))
+
+    }
+    if("Mobile Web" %in% modes & "IVR" %!in% modes & "SMS" %!in% modes){
+      num_cont <- mw %>% select(respondent_id, mno, dispo, matches("attempt_"))%>%
+        mutate(contact_attempts = length(which(grepl("action_data", names(.))))-
+                 ifelse(length(which(grepl("action_data", names(.))))==1,0,
+                        rowSums(is.na(.[,which(grepl("action_data", names(.)))]))))
+
+    }
+
+    numcont2 <- num_cont %>%
+      group_by(respondent_id, mno) %>%
+      mutate(contact_attempts=sum(contact_attempts, na.rm=TRUE)) %>%
+      suppressWarnings(summarise_all(funs(max(as.character(.), na.rm=TRUE)))) %>%
+      as.data.frame()
+
+    numcont2 <- numcont2 %>% select(-matches("7|8|9|10|11|12|13|14|15|16|17|18|19|20|21"))
+
+    return(numcont2)
+
+  })
+
+
+
   output$cont_resp_rates <- renderPlot({
     resp_rates <- numcont2() %>%
       ungroup() %>%
@@ -682,7 +962,40 @@ reactive({print(input$max_date)})
 
   output$cont_lag_ridges <- renderPlot({cont_lag_ridges()})
 
+
+  cont_lag_ridges_v2 <- reactive({
+    text_df <- numcont2_v2() %>% ungroup() %>% select(respondent_id, (matches("lag") & !matches("date"))) %>%
+      pivot_longer(cols = matches("lag")) %>% filter(!is.na(value)) %>%
+      group_by(name) %>% summarise(value = median(value, na.rm=T))
+
+
+    cont_lag_ridges <- ggplot(numcont2_v2() %>% ungroup() %>% select(respondent_id, (matches("lag") & !matches("date"))) %>% pivot_longer(cols = matches("lag")) %>% filter(!is.na(value)),
+                              aes(x=value, y=name)) +
+      ggridges::stat_density_ridges(geom="density_ridges_gradient", aes(fill=factor(stat(quantile))), calc_ecdf=TRUE, scale=.9, quantile_lines=TRUE, quantiles=c(0.025,0.5, 0.975), jittered_points=FALSE, position=ggridges::position_points_jitter(width=0.5, height=0), point_shape="|", point_size=1, point_alpha=1, alpha=0.8) +
+      geom_text(data=text_df, aes(label=round(value,2)), position = position_nudge(y=-0.1)) +
+      scale_fill_manual(
+        name = "Probability", values = c("#FF0000A0", "#A0A0A0A0", "#A0A0A0A0", "#0000FFA0"),
+        labels = c("(0, 0.025]", "(0.025, 0.975]", "(0.025, 0.975]", "(0.975, 1]")
+      ) +
+      guides(fill="none") +
+      labs(caption = "Red and blue areas indicate 0-0.025 and 0.975-1 probability.\nVertical line indicates median.",
+           x="Time between contact attempts (hours)",
+           y="Current contact attempt",
+           subtitle = "Lag between contact attempts and the previous contact attempt") +
+      theme_minimal() +
+      theme(text = element_text(size=18),
+            plot.caption = element_text(hjust=0.5))
+
+    return(cont_lag_ridges)
+  })
+
+  output$cont_lag_ridges_v2 <- renderPlot({cont_lag_ridges_v2()})
+
+
   output$numcont2 <- DT::renderDT({numcont2() %>%
+      datatable(options = list(scrollX=TRUE))})
+
+  output$numcont2_v2 <- DT::renderDT({numcont2_v2() %>%
       datatable(options = list(scrollX=TRUE))})
 
   contact_mode_tile <- reactive({
@@ -981,6 +1294,16 @@ reactive({print(input$max_date)})
       write.csv(numcont2(), file)
     }
   )
+
+  output$numcont2_d_v2 <- downloadHandler(
+    filename = function(){
+      paste0("cont_lag_", Sys.Date(), ".csv")
+    },
+    content = function(file){
+      write.csv(numcont2_v2(), file)
+    }
+  )
+
 
   output$cont_answer_valid_d <- downloadHandler(
     filename = function(){
