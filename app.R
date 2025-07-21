@@ -223,6 +223,12 @@ reactive({print(input$max_date)})
 
     res_df$date_format <- format(strptime(res_df$date, "%b %d, %Y %H:%M"), "%Y %m %d")
 
+    # Rename Lookup
+    lookup <- c(SEX2 = "gender", SEX2 = "sex")
+
+    res_df <- res_df %>%
+      rename(any_of(lookup))
+
     return(res_df)
     #}
   })
