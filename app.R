@@ -279,7 +279,7 @@ reactive({print(input$max_date)})
                                  age >=18 & age <30 ~ "18-29",
                                  age >=30 & age < 45 ~ "30-44",
                                  age >=45 ~ "45+")) %>%
-      mutate(gender = gsub('[[:digit:]]+', '', gender)) %>%
+      mutate(SEX2 = gsub('[[:digit:]]+', '', SEX2)) %>%
       mutate(dispo = case_when(disposition %in% c("Completed", "Interim partial", "Partial") ~ "Complete",
                                TRUE ~ disposition)) %>%
       mutate(date2 = format(as_datetime(date, format = "%b %d, %Y %H:%M"), format="%m %d %Y")) %>%
@@ -289,12 +289,12 @@ reactive({print(input$max_date)})
                                disposition=="Refused" ~ "Refused",
                                disposition=="Rejected" ~ "Not Eligible: Quota",
                                disposition=="Ineligible" ~ "Not Eligible: Age",
-                               disposition=="Breakoff" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
-                               disposition=="Breakoff" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                               disposition=="Breakoff" & (SEX2!="" | !is.na(SEX2)) & !is.na(age) ~ "Eligible - Non-Interview",
+                               disposition=="Breakoff" & (SEX2=="" | is.na(SEX2)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
                                disposition=="Contacted" ~ "Unknown Eligiblity - Non-Interview",
                                disposition=="Failed" ~ "Unknown Eligiblity - Non-Interview",
-                               disposition=="Started" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
-                               disposition=="Started" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                               disposition=="Started" & (SEX2!="" | !is.na(SEX2)) & !is.na(age) ~ "Eligible - Non-Interview",
+                               disposition=="Started" & (SEX2=="" | is.na(SEX2)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
                                disposition=="Unresponsive" ~ "Unknown Eligiblity - Non-Interview",
                                TRUE ~ "UNKNOWN"))
 
@@ -329,11 +329,11 @@ reactive({print(input$max_date)})
       mutate(timestamp = hm(timestamp))
 
     contact <- temp_contact %>% filter(action_type !="Response") %>% as.data.frame() %>%
-      merge(., temp_res() %>% select(respondent_id, gender, age), by="respondent_id", all.x=TRUE) %>%
+      merge(., temp_res() %>% select(respondent_id, SEX2, age), by="respondent_id", all.x=TRUE) %>%
       mutate(cat = "contact")
 
     response <- temp_contact %>% filter(action_type=="Response") %>%
-      merge(temp_res() %>% select(respondent_id, gender, age), by="respondent_id") %>%
+      merge(temp_res() %>% select(respondent_id, SEX2, age), by="respondent_id") %>%
       mutate(cat = "response")
 
     cont_resp <- rbind(contact, response)
@@ -540,12 +540,12 @@ reactive({print(input$max_date)})
                                  disposition=="Refused" ~ "Refused",
                                  disposition=="Rejected" ~ "Not Eligible: Quota",
                                  disposition=="Ineligible" ~ "Not Eligible: Age",
-                                 disposition=="Breakoff" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
-                                 disposition=="Breakoff" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Breakoff" & (SEX2!="" | !is.na(SEX2)) & !is.na(age) ~ "Eligible - Non-Interview",
+                                 disposition=="Breakoff" & (SEX2=="" | is.na(SEX2)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
                                  disposition=="Contacted" ~ "Unknown Eligiblity - Non-Interview",
                                  disposition=="Failed" ~ "Unknown Eligiblity - Non-Interview",
-                                 disposition=="Started" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
-                                 disposition=="Started" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Started" & (SEX2!="" | !is.na(SEX2)) & !is.na(age) ~ "Eligible - Non-Interview",
+                                 disposition=="Started" & (SEX2=="" | is.na(SEX2)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
                                  disposition=="Unresponsive" ~ "Unknown Eligiblity - Non-Interview",
                                  TRUE ~ "UNKNOWN"))
     }
@@ -567,12 +567,12 @@ reactive({print(input$max_date)})
                                  disposition=="Refused" ~ "Refused",
                                  disposition=="Rejected" ~ "Not Eligible: Quota",
                                  disposition=="Ineligible" ~ "Not Eligible: Age",
-                                 disposition=="Breakoff" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
-                                 disposition=="Breakoff" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Breakoff" & (SEX2!="" | !is.na(SEX2)) & !is.na(age) ~ "Eligible - Non-Interview",
+                                 disposition=="Breakoff" & (SEX2=="" | is.na(SEX2)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
                                  disposition=="Contacted" ~ "Unknown Eligiblity - Non-Interview",
                                  disposition=="Failed" ~ "Unknown Eligiblity - Non-Interview",
-                                 disposition=="Started" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
-                                 disposition=="Started" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Started" & (SEX2!="" | !is.na(SEX2)) & !is.na(age) ~ "Eligible - Non-Interview",
+                                 disposition=="Started" & (SEX2=="" | is.na(SEX2)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
                                  disposition=="Unresponsive" ~ "Unknown Eligiblity - Non-Interview",
                                  TRUE ~ "UNKNOWN"))
     }
@@ -595,12 +595,12 @@ reactive({print(input$max_date)})
                                  disposition=="Refused" ~ "Refused",
                                  disposition=="Rejected" ~ "Not Eligible: Quota",
                                  disposition=="Ineligible" ~ "Not Eligible: Age",
-                                 disposition=="Breakoff" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
-                                 disposition=="Breakoff" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Breakoff" & (SEX2!="" | !is.na(SEX2)) & !is.na(age) ~ "Eligible - Non-Interview",
+                                 disposition=="Breakoff" & (SEX2=="" | is.na(SEX2)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
                                  disposition=="Contacted" ~ "Unknown Eligiblity - Non-Interview",
                                  disposition=="Failed" ~ "Unknown Eligiblity - Non-Interview",
-                                 disposition=="Started" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
-                                 disposition=="Started" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Started" & (SEX2!="" | !is.na(SEX2)) & !is.na(age) ~ "Eligible - Non-Interview",
+                                 disposition=="Started" & (SEX2=="" | is.na(SEX2)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
                                  disposition=="Unresponsive" ~ "Unknown Eligiblity - Non-Interview",
                                  TRUE ~ "UNKNOWN"))
     }
@@ -784,12 +784,12 @@ reactive({print(input$max_date)})
                                  disposition=="Refused" ~ "Refused",
                                  disposition=="Rejected" ~ "Not Eligible: Quota",
                                  disposition=="Ineligible" ~ "Not Eligible: Age",
-                                 disposition=="Breakoff" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
-                                 disposition=="Breakoff" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Breakoff" & (SEX2!="" | !is.na(SEX2)) & !is.na(age) ~ "Eligible - Non-Interview",
+                                 disposition=="Breakoff" & (SEX2=="" | is.na(SEX2)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
                                  disposition=="Contacted" ~ "Unknown Eligiblity - Non-Interview",
                                  disposition=="Failed" ~ "Unknown Eligiblity - Non-Interview",
-                                 disposition=="Started" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
-                                 disposition=="Started" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Started" & (SEX2!="" | !is.na(SEX2)) & !is.na(age) ~ "Eligible - Non-Interview",
+                                 disposition=="Started" & (SEX2=="" | is.na(SEX2)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
                                  disposition=="Unresponsive" ~ "Unknown Eligiblity - Non-Interview",
                                  TRUE ~ "UNKNOWN"))
     }
@@ -813,12 +813,12 @@ reactive({print(input$max_date)})
                                  disposition=="Refused" ~ "Refused",
                                  disposition=="Rejected" ~ "Not Eligible: Quota",
                                  disposition=="Ineligible" ~ "Not Eligible: Age",
-                                 disposition=="Breakoff" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
-                                 disposition=="Breakoff" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Breakoff" & (SEX2!="" | !is.na(SEX2)) & !is.na(age) ~ "Eligible - Non-Interview",
+                                 disposition=="Breakoff" & (SEX2=="" | is.na(SEX2)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
                                  disposition=="Contacted" ~ "Unknown Eligiblity - Non-Interview",
                                  disposition=="Failed" ~ "Unknown Eligiblity - Non-Interview",
-                                 disposition=="Started" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
-                                 disposition=="Started" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Started" & (SEX2!="" | !is.na(SEX2)) & !is.na(age) ~ "Eligible - Non-Interview",
+                                 disposition=="Started" & (SEX2=="" | is.na(SEX2)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
                                  disposition=="Unresponsive" ~ "Unknown Eligiblity - Non-Interview",
                                  TRUE ~ "UNKNOWN"))
     }
@@ -841,12 +841,12 @@ reactive({print(input$max_date)})
                                  disposition=="Refused" ~ "Refused",
                                  disposition=="Rejected" ~ "Not Eligible: Quota",
                                  disposition=="Ineligible" ~ "Not Eligible: Age",
-                                 disposition=="Breakoff" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
-                                 disposition=="Breakoff" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Breakoff" & (SEX2!="" | !is.na(SEX2)) & !is.na(age) ~ "Eligible - Non-Interview",
+                                 disposition=="Breakoff" & (SEX2=="" | is.na(SEX2)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
                                  disposition=="Contacted" ~ "Unknown Eligiblity - Non-Interview",
                                  disposition=="Failed" ~ "Unknown Eligiblity - Non-Interview",
-                                 disposition=="Started" & (gender!="" | !is.na(gender)) & !is.na(age) ~ "Eligible - Non-Interview",
-                                 disposition=="Started" & (gender=="" | is.na(gender)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
+                                 disposition=="Started" & (SEX2!="" | !is.na(SEX2)) & !is.na(age) ~ "Eligible - Non-Interview",
+                                 disposition=="Started" & (SEX2=="" | is.na(SEX2)) | is.na(age) ~ "Unknown Eligiblity - Non-Interview",
                                  disposition=="Unresponsive" ~ "Unknown Eligiblity - Non-Interview",
                                  TRUE ~ "UNKNOWN"))
     }
